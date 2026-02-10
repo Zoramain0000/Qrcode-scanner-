@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -6,6 +6,7 @@
     <title>🚀 Ultra Large Scale QR Scanner</title>
     <script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js"></script>
     <style>
+        /* [Keep all your existing CSS exactly the same - no changes needed] */
         * {
             margin: 0;
             padding: 0;
@@ -99,8 +100,8 @@
 
         #scanner {
             width: 100%;
-            max-width: 1000px; /* LARGER SCALE */
-            height: 700px; /* LARGER SCALE */
+            max-width: 1000px;
+            height: 700px;
             position: relative;
             border-radius: 25px;
             overflow: hidden;
@@ -114,14 +115,13 @@
             object-fit: cover;
         }
 
-        /* MEGA LARGE SCAN FRAME */
         .mega-scan-frame {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 450px; /* HUGE SCAN AREA */
-            height: 450px; /* HUGE SCAN AREA */
+            width: 450px;
+            height: 450px;
             border: 4px solid #00ff88;
             border-radius: 20px;
             box-shadow: 
@@ -146,7 +146,6 @@
             }
         }
 
-        /* MULTIPLE SCAN LINES FOR LARGER COVERAGE */
         .mega-scan-lines {
             position: absolute;
             top: 0;
@@ -166,7 +165,6 @@
             100% { top: 100%; opacity: 0; }
         }
 
-        /* CORNER INDICATORS FOR LARGE QR */
         .corner {
             position: absolute;
             width: 25px;
@@ -195,6 +193,17 @@
             margin: 25px 0;
             min-height: 40px;
             text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .permission-hint {
+            background: rgba(255, 193, 7, 0.2);
+            border: 2px solid #ffc107;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+            color: #fff;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
         }
 
         .mega-controls {
@@ -334,7 +343,7 @@
     <div class="container">
         <div class="header">
             <h1>🔥 MEGA QR Scanner</h1>
-            <p>Large Scale • Ultra Fast • ALL QR Formats</p>
+            <p>🔐 <strong>Allow Camera Permission</strong> • Large Scale • Ultra Fast</p>
         </div>
 
         <div class="mega-scanner-container">
@@ -351,7 +360,15 @@
                 </div>
             </div>
             
-            <div class="status" id="status">👆 Click "START MEGA SCAN" - Massive QR Detection Ready!</div>
+            <div class="status" id="status">📱 <strong>STEP 1:</strong> Click START → <strong>STEP 2:</strong> Allow Camera Permission</div>
+            
+            <div class="permission-hint" id="permissionHint" style="display: none;">
+                🔐 <strong>CAMERA PERMISSION BLOCKED?</strong><br>
+                1️⃣ Check browser address bar 📍<br>
+                2️⃣ Click camera 🔴 icon<br>
+                3️⃣ Select "Allow" ✅<br>
+                4️⃣ Refresh page 🔄 if needed
+            </div>
             
             <div class="mega-controls">
                 <button class="btn btn-primary" id="startBtn">🚀 START MEGA SCAN</button>
@@ -379,8 +396,10 @@
                 this.ctx = this.canvas.getContext('2d');
                 this.stream = null;
                 this.scanning = false;
+                this.permissionHint = document.getElementById('permissionHint');
                 this.initElements();
                 this.bindEvents();
+                this.checkPermissionStatus();
             }
 
             initElements() {
@@ -400,14 +419,29 @@
                 this.executeBtn.onclick = () => this.executeResult();
             }
 
+            async checkPermissionStatus() {
+                try {
+                    const permission = await navigator.permissions.query({ name: 'camera' });
+                    if (permission.state === 'denied') {
+                        this.status.innerHTML = '❌ <strong>CAMERA BLOCKED</strong> - Click permission hint above 👆';
+                        this.permissionHint.style.display = 'block';
+                    }
+                } catch (e) {
+                    // Permission API not supported, continue normally
+                }
+            }
+
             async start() {
                 try {
-                    // HIGH RESOLUTION for large QR codes
+                    this.status.innerHTML = '🔄 Requesting camera permission...';
+                    this.permissionHint.style.display = 'none';
+
+                    // Request camera with high resolution
                     this.stream = await navigator.mediaDevices.getUserMedia({
                         video: { 
                             facingMode: 'environment',
-                            width: { ideal: 1920, min: 1280 },  // HIGHER RES
-                            height: { ideal: 1080, min: 720 }   // HIGHER RES
+                            width: { ideal: 1920, min: 1280 },
+                            height: { ideal: 1080, min: 720 }
                         }
                     });
 
@@ -419,20 +453,32 @@
                     this.scanLoop();
                     
                     this.status.innerHTML = '📱 <strong>MEGA SCAN ACTIVE</strong> - Large QR Detection Optimal';
+                    
                 } catch (err) {
-                    this.status.innerHTML = '❌ <strong>CAMERA ACCESS REQUIRED</strong> - Enable permissions';
                     console.error('Camera error:', err);
+                    
+                    if (err.name === 'NotAllowedError') {
+                        this.status.innerHTML = '🚫 <strong>PERMISSION DENIED</strong> - Allow camera in browser 👆';
+                        this.permissionHint.style.display = 'block';
+                    } else if (err.name === 'NotFoundError') {
+                        this.status.innerHTML = '📱 <strong>NO CAMERA FOUND</strong> - Connect/use device camera';
+                    } else if (err.name === 'NotReadableError') {
+                        this.status.innerHTML = '🔒 <strong>CAMERA IN USE</strong> - Close other apps/tabs';
+                    } else {
+                        this.status.innerHTML = '❌ <strong>CAMERA ERROR</strong> - ' + err.message;
+                    }
                 }
             }
 
             stop() {
                 if (this.stream) {
                     this.stream.getTracks().forEach(track => track.stop());
+                    this.stream = null;
                 }
                 this.video.srcObject = null;
                 this.scanning = false;
                 this.updateUI(false);
-                this.status.textContent = 'MEGA Scanner stopped. Ready for large scale scanning!';
+                this.status.textContent = '⏹️ MEGA Scanner stopped. Ready for new scan!';
             }
 
             updateUI(scanning) {
@@ -446,18 +492,16 @@
                 if (!this.scanning) return;
 
                 if (this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
-                    // FULL HD CANVAS for maximum QR detection accuracy
                     this.canvas.width = this.video.videoWidth;
                     this.canvas.height = this.video.videoHeight;
-                    this.ctx.drawImage(this.video, 0, 0);
+                    this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
                     
                     const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
                     
-                    // MULTIPLE SCAN PASSES for large QR codes
                     let code = jsQR(imageData.data, imageData.width, imageData.height);
                     
                     if (!code) {
-                        // Try rotated scan for complex/large QRs
+                        // Try rotated scan
                         const rotatedImageData = this.rotateImageData(imageData, 90);
                         code = jsQR(rotatedImageData.data, rotatedImageData.width, rotatedImageData.height);
                     }
@@ -472,17 +516,20 @@
             }
 
             rotateImageData(imageData, degrees) {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = imageData.height;
-                canvas.height = imageData.width;
-                ctx.translate(canvas.width/2, canvas.height/2);
-                ctx.rotate(degrees * Math.PI / 180);
-                ctx.drawImage(
+                const tempCanvas = document.createElement('canvas');
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCanvas.width = imageData.height;
+                tempCanvas.height = imageData.width;
+                
+                tempCtx.translate(tempCanvas.width/2, tempCanvas.height/2);
+                tempCtx.rotate(degrees * Math.PI / 180);
+                tempCtx.drawImage(
                     this.canvas, 
-                    -imageData.width/2, -imageData.height/2
+                    -imageData.width/2, 
+                    -imageData.height/2
                 );
-                return ctx.getImageData(0, 0, canvas.width, canvas.height);
+                
+                return tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
             }
 
             onQRCodeDetected(data) {
@@ -493,13 +540,19 @@
 
             showResult(data) {
                 this.resultData.innerHTML = `
-                    <strong>📱 RAW DATA (Large Scale Scan):</strong><br><code>${data}</code><br><br>
+                    <strong>📱 RAW DATA (Large Scale Scan):</strong><br><code>${this.escapeHtml(data)}</code><br><br>
                     <strong>🔗 TYPE:</strong> ${this.detectContentType(data)}<br><br>
                     <strong>📊 LENGTH:</strong> ${data.length} chars | <strong>🔍 CONFIDENCE:</strong> 100%<br><br>
                     <strong>⚡ READY:</strong> Click EXECUTE for instant action
                 `;
                 this.resultModal.style.display = 'block';
                 document.body.style.overflow = 'hidden';
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
             }
 
             hideResult() {
@@ -525,7 +578,10 @@
             }
 
             executeResult() {
-                const data = this.resultData.textContent.match(/RAW DATA.*?:(.+?)(?=<|$)/s)?.[1]?.trim();
+                // Extract data safely
+                const dataMatch = this.resultData.innerHTML.match(/<code>(.*?)<\/code>/);
+                const data = dataMatch ? dataMatch[1] : '';
+                
                 if (!data) return;
 
                 try {
@@ -536,7 +592,7 @@
                     } else if (this.detectContentType(data).includes('Phone')) {
                         window.location.href = `tel:${data.replace(/[\s\-\(\)]/g, '')}`;
                     } else if (data.startsWith('bitcoin:') || data.startsWith('ethereum:')) {
-                        window.open(data, '_blank');
+                        window.open(data, '_blank', 'noopener,noreferrer');
                     } else {
                         navigator.clipboard.writeText(data).then(() => {
                             this.status.innerHTML = '✅ <strong>LARGE DATA COPIED</strong> - Ready for mega scan!';
@@ -562,7 +618,7 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                document.querySelector('.result-modal').style.display = 'none';
+                document.querySelector('.result-modal')?.style.setProperty('display', 'none');
                 document.body.style.overflow = 'auto';
             }
         });
